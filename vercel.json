@@ -1,15 +1,8 @@
 {
   "version": 2,
-  "build": {
-    "env": {
-      "VITE_API_URL": "/api"
-    }
-  },
-  "functions": {
-    "server/index.ts": {
-      "runtime": "nodejs20.x"
-    }
-  },
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist/public",
   "rewrites": [
     {
       "source": "/api/(.*)",
@@ -17,7 +10,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "/client/dist/index.html"
+      "destination": "/index.html"
     }
   ]
 }

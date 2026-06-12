@@ -27,11 +27,12 @@ const BROWSER_HEADERS = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 };
 
-async function startServer() {
-  const app = express();
-  const server = createServer(app);
+const app = express();
+const server = createServer(app);
 
-  app.use(express.json());
+app.use(express.json());
+
+async function startServer() {
 
   // CORS
   app.use((req, res, next) => {
@@ -212,9 +213,13 @@ async function startServer() {
 
   // Inicialização estável do servidor da API
   const port = process.env.PORT || 3000;
-  server.listen(port, () => {
-    console.log(`🚀 Server running on port ${port}`);
-  });
+  if (process.env.NODE_ENV !== "production") {
+    server.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+    });
+  }
 }
 
 startServer().catch(console.error);
+
+export default app;
