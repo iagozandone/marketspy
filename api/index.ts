@@ -2,6 +2,11 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import axios from "axios";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const ML_CLIENT_ID = process.env.ML_CLIENT_ID!;
 const ML_CLIENT_SECRET = process.env.ML_CLIENT_SECRET!;
@@ -11,6 +16,10 @@ const app = express();
 const server = createServer(app);
 
 app.use(express.json());
+
+// Servir arquivos estáticos do frontend (pasta dist)
+const distPath = path.resolve(__dirname, "..", "dist");
+app.use(express.static(distPath));
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -57,16 +66,11 @@ app.get("/api/search", async (req, res) => {
   try {
     const token = await getAccessToken();
 
-    // TÉCNICA DEFINITIVA: Camuflagem de Googlebot
-    // O Mercado Livre não bloqueia o Googlebot para não perder SEO.
     const mlResponse = await axios.get(`https://api.mercadolibre.com/sites/MLB/search`, {
-      params: { q, limit: 30 },
+      params: { q, limit: 30, access_token: token },
       headers: {
-        "Authorization": `Bearer ${token}`,
-        "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
-        "Accept": "application/json",
-        "Accept-Language": "pt-BR,pt;q=0.9",
-        "X-Forwarded-For": "66.249.66.1" // IP falso do Google para reforçar a camuflagem
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "application/json"
       }
     });
 
@@ -91,11 +95,18 @@ app.get("/api/search", async (req, res) => {
     return res.json({ products });
 
   } catch (err: any) {
-    console.error("[Critical Search Error]", err?.response?.status);
-    return res.status(403).json({
-      error: "Acesso negado pelo Mercado Livre. Por favor, mude a região da Vercel para São Paulo (sao1) nas configurações de Functions."
-    });
+    return res.status(403).json({ error: "Acesso negado pelo Mercado Livre." });
   }
+});
+
+// Rota para o frontend (Single Page Application)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+  console.log(`🚀 MarketSpy rodando na porta ${port}`);
 });
 
 export default app;
