@@ -69,6 +69,56 @@ async function startServer() {
   });
 
   // =========================
+  // TESTE TOKEN MERCADO LIVRE
+  // =========================
+  app.get("/api/test-ml", async (_req, res) => {
+    try {
+      const tokenResponse = await axios.post(
+        "https://api.mercadolibre.com/oauth/token",
+        new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: ML_CLIENT_ID,
+          client_secret: ML_CLIENT_SECRET,
+          refresh_token: ML_REFRESH_TOKEN,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+          },
+        }
+      );
+
+      const accessToken = tokenResponse.data.access_token;
+
+      const userResponse = await axios.get(
+        "https://api.mercadolibre.com/users/me",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      return res.json({
+        success: true,
+        token_valid: true,
+        user: userResponse.data,
+      });
+    } catch (error: any) {
+      console.error(
+        "[ML TEST ERROR]",
+        error?.response?.data || error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: error?.response?.data || error.message,
+      });
+    }
+  });
+  // =========================
   // BUSCA
   // =========================
   app.get("/api/search", async (req, res) => {
