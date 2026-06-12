@@ -102,19 +102,28 @@ app.get("/api/search", async (req, res) => {
     // Get a fresh access token for the search
     const accessToken = await getAccessToken();
 
-    // Seguindo exatamente o padrão curl da documentação oficial
-    const mlResponse = await axios.get(
-      `https://api.mercadolibre.com/sites/MLB/search`,
-      {
-        params: {
-          q: q,
-          limit: 15,
-        },
-        headers: {
-          "Authorization": `Bearer ${accessToken}`
-        },
-      }
-    );
+    // Tentativa 1: Busca Autenticada (Padrão)
+    let mlResponse;
+    try {
+      mlResponse = await axios.get(
+        `https://api.mercadolibre.com/sites/MLB/search`,
+        {
+          params: { q, limit: 20 },
+          headers: { "Authorization": `Bearer ${accessToken}` }
+        }
+      );
+    } catch (authError: any) {
+      console.error("[ML Auth Search Error]", authError?.response?.data || authError.message);
+
+      // Tentativa 2: Busca Pública (Fallback se o 403 for no Token)
+      console.log("[ML] Falling back to public search...");
+      mlResponse = await axios.get(
+        `https://api.mercadolibre.com/sites/MLB/search`,
+        {
+          params: { q, limit: 20 }
+        }
+      );
+    }
 
     const results = mlResponse.data.results || [];
 
