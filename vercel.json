@@ -6,6 +6,10 @@
       "destination": "/api/index.ts"
     },
     {
+      "source": "/assets/:match*",
+      "destination": "/assets/:match*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
