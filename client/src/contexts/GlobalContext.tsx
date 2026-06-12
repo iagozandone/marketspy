@@ -22,7 +22,7 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<string>("Busca e Análise");
-  
+
   const [history, setHistory] = useState<SearchHistoryEntry[]>(() => {
     const saved = localStorage.getItem("marketspy_history");
     if (saved) {
@@ -92,10 +92,10 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     toast.info(`Iniciando busca por "${keyword}"...`);
 
     try {
-      const response = await axios.get('http://localhost:3000/api/search', {
+      const response = await axios.get('/api/search', {
         params: { q: keyword }
       });
-      
+
       let matchedProducts: Product[] = response.data.products || [];
 
       // 🔥 NOVA REGRA: Elimina qualquer anúncio com menos de 150 visitas nos últimos 7 dias
@@ -149,16 +149,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch (error) {
       console.error("Erro na busca:", error);
       toast.error("Falha ao buscar produtos no Mercado Livre.");
-      
+
       const failedEntry: SearchHistoryEntry = {
         ...newEntryPlaceholder,
         status: "failed"
       };
 
-      setHistory(prev => prev.map(item => 
+      setHistory(prev => prev.map(item =>
         item.id === searchId ? failedEntry : item
       ));
-      
+
       // 🔥 Correção 2: Avisa a tela principal que deu erro para parar de girar
       setCurrentSearch(failedEntry);
     }
@@ -197,7 +197,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const exportData = (format: "Excel" | "CSV" | "PDF", data: any) => {
     toast.success(`Exportando dados no formato ${format}...`);
-    
+
     let fileContent = "";
     let mimeType = "text/plain";
     let fileName = `marketspy-export-${Date.now()}`;
@@ -205,7 +205,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (format === "CSV") {
       mimeType = "text/csv;charset=utf-8;";
       fileName += ".csv";
-      
+
       const headers = ["ID", "Título", "Preço (R$)", "ID Produto", "Página", "Visitas (7d)", "Dias Online", "Vendas/Dia", "Vendas Totais", "Tipo Listagem", "Logística", "Vendedor"];
       const rows = (data.products || []).map((p: Product) => [
         p.id,
@@ -221,7 +221,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         p.logistics_type,
         `"${p.seller_name.replace(/"/g, '""')}"`
       ]);
-      
+
       fileContent = [headers.join(","), ...rows.map((r: any) => r.join(","))].join("\n");
     } else if (format === "Excel") {
       mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -242,7 +242,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast.success(`Exportação ${format} concluída!`);
   };
 
