@@ -5,7 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 
-const __filename = fileURLToPath(import.meta.url);
+const __filename = fileURLToPath(import.meta.url );
 const __dirname = path.dirname(__filename);
 
 // Mercado Livre
@@ -58,7 +58,7 @@ async function startServer() {
           client_id: ML_CLIENT_ID,
           client_secret: ML_CLIENT_SECRET,
           refresh_token: refreshToken,
-        }),
+        } ),
         {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -93,7 +93,7 @@ async function startServer() {
           client_id: ML_CLIENT_ID,
           client_secret: ML_CLIENT_SECRET,
           refresh_token: ML_REFRESH_TOKEN,
-        }),
+        } ),
         {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -112,7 +112,7 @@ async function startServer() {
             ...COMMON_HEADERS,
           },
         }
-      );
+       );
 
       return res.json({
         success: true,
@@ -150,7 +150,7 @@ async function startServer() {
       const mlResponse = await axios.get(
         `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(
           q as string
-        )}&limit=15`,
+         )}&limit=15`,
         {
           headers: BROWSER_HEADERS,
         }
@@ -193,23 +193,15 @@ async function startServer() {
       console.error("DATA:", error?.response?.data);
 
       return res.status(500).json({
-        error: "Failed to fetch from Mercado Livre",
-        details: error?.response?.data,
+        success: false,
+        error: error?.response?.data || error.message,
         status: error?.response?.status,
       });
     }
   });
 
-  // ==========================================
-  // CONFIGURAÇÃO DOS ARQUIVOS ESTÁTICOS (LOCAL)
-  // ==========================================
-  if (process.env.NODE_ENV !== "production") {
-    const staticPath = path.resolve(__dirname, "..", "dist");
-    app.use(express.static(staticPath));
-    app.get("*", (_req, res) => {
-      res.sendFile(path.join(staticPath, "index.html"));
-    });
-  }
+  // Na Vercel, não precisamos servir arquivos estáticos via Express
+  // Isso é feito automaticamente pelo roteamento do vercel.json
 
   // Inicialização estável do servidor da API
   const port = process.env.PORT || 3000;
