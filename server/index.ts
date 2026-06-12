@@ -133,14 +133,33 @@ async function startServer() {
 
       console.log(`[SEARCH] ${q}`);
 
+      // Gera Access Token
+      const tokenResponse = await axios.post(
+        "https://api.mercadolibre.com/oauth/token",
+        new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: ML_CLIENT_ID,
+          client_secret: ML_CLIENT_SECRET,
+          refresh_token: ML_REFRESH_TOKEN,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Accept: "application/json",
+          },
+        }
+      );
+
+      const accessToken = tokenResponse.data.access_token;
+
+      // Busca autenticada
       const mlResponse = await axios.get(
         `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(
           q as string
         )}&limit=15`,
         {
           headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+            Authorization: `Bearer ${accessToken}`,
             Accept: "application/json",
           },
         }
