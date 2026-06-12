@@ -1,5 +1,5 @@
 import React from "react";
-import { useGlobal } from "../contexts/GlobalContext";
+import { useGlobal } from "../contexts/GlobalContext.tsx";
 import { Calendar, Search, Activity, Cpu } from "lucide-react";
 
 export const Header: React.FC = () => {
@@ -12,7 +12,7 @@ export const Header: React.FC = () => {
     day: "numeric",
   });
 
-  const totalSearches = history.filter(h => h.status === "completed").length;
+  const totalSearches = history.filter((h: any) => h.status === "completed").length;
 
   return (
     <header className="h-16 bg-[#131A2A]/40 backdrop-blur-md border-b border-[#1E293B] flex items-center justify-between px-6 z-10">

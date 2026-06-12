@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { useGlobal } from "../contexts/GlobalContext";
+import { useGlobal } from "../contexts/GlobalContext.tsx";
 import { FileSpreadsheet, Download, CheckCircle, Info, ShieldAlert, FileText, BarChart } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils.ts";
 
 export const ExportPage: React.FC = () => {
   const { currentSearch, favorites, exportData } = useGlobal();
