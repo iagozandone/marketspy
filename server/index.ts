@@ -146,13 +146,12 @@ async function startServer() {
 
       console.log(`[SEARCHING WITH BROWSER AGENT] ${q}`);
 
-      // Executa a busca como requisição pública, eliminando o bloqueio 403 de privilégios de conta
       const mlResponse = await axios.get(
         `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(
           q as string
         )}&limit=15`,
         {
-          headers: BROWSER_HEADERS, // Injeta o User-Agent que simula um navegador legítimo
+          headers: BROWSER_HEADERS,
         }
       );
 
@@ -200,22 +199,19 @@ async function startServer() {
     }
   });
 
-  // =========================
-  // FRONTEND
-  // =========================
-  const staticPath =
-    process.env.NODE_ENV === "production"
-      ? path.resolve(__dirname, "public")
-      : path.resolve(__dirname, "..", "dist", "public");
+  // ==========================================
+  // CONFIGURAÇÃO DOS ARQUIVOS ESTÁTICOS (LOCAL)
+  // ==========================================
+  if (process.env.NODE_ENV !== "production") {
+    const staticPath = path.resolve(__dirname, "..", "dist");
+    app.use(express.static(staticPath));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(staticPath, "index.html"));
+    });
+  }
 
-  app.use(express.static(staticPath));
-
-  app.get("*", (_req, res) => {
-    res.sendFile(path.join(staticPath, "index.html"));
-  });
-
+  // Inicialização estável do servidor da API
   const port = process.env.PORT || 3000;
-
   server.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
   });
