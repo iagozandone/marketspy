@@ -196,14 +196,16 @@ async function startServer() {
         products: formattedProducts,
       });
     } catch (error: any) {
-      console.error(
-        "[Search Error]",
-        error?.response?.data || error
-      );
+
+      console.error("[Search Error]");
+      console.error("STATUS:", error?.response?.status);
+      console.error("HEADERS:", error?.response?.headers);
+      console.error("DATA:", error?.response?.data);
 
       return res.status(500).json({
         error: "Failed to fetch from Mercado Livre",
         details: error?.response?.data,
+        status: error?.response?.status,
       });
     }
   });
