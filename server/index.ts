@@ -13,6 +13,13 @@ const ML_CLIENT_ID = process.env.ML_CLIENT_ID!;
 const ML_CLIENT_SECRET = process.env.ML_CLIENT_SECRET!;
 const ML_REFRESH_TOKEN = process.env.ML_REFRESH_TOKEN!;
 
+// Header padrão global para evitar bloqueios (Cloudfront/WAF) no Render
+const COMMON_HEADERS = {
+  "Accept": "application/json",
+  "Accept-Encoding": "gzip, deflate, br",
+  "User-Agent": "MarketSpy/1.0 (Node.js; AxiosClient; contato@seudominio.com)"
+};
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
@@ -34,8 +41,7 @@ async function startServer() {
   // =========================
   app.post("/api/ml/refresh-token", async (req, res) => {
     try {
-      const refreshToken =
-        req.body.refresh_token || ML_REFRESH_TOKEN;
+      const refreshToken = req.body.refresh_token || ML_REFRESH_TOKEN;
 
       const response = await axios.post(
         "https://api.mercadolibre.com/oauth/token",
@@ -47,9 +53,8 @@ async function startServer() {
         }),
         {
           headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded",
-            Accept: "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            ...COMMON_HEADERS,
           },
         }
       );
@@ -84,7 +89,7 @@ async function startServer() {
         {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
-            Accept: "application/json",
+            ...COMMON_HEADERS,
           },
         }
       );
@@ -96,7 +101,7 @@ async function startServer() {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+            ...COMMON_HEADERS,
           },
         }
       );
@@ -118,6 +123,7 @@ async function startServer() {
       });
     }
   });
+
   // =========================
   // BUSCA
   // =========================
@@ -145,14 +151,14 @@ async function startServer() {
         {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
-            Accept: "application/json",
+            ...COMMON_HEADERS,
           },
         }
       );
 
       const accessToken = tokenResponse.data.access_token;
 
-      // Busca autenticada
+      // Busca autenticada com os headers de proteção injetados
       const mlResponse = await axios.get(
         `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(
           q as string
@@ -160,7 +166,7 @@ async function startServer() {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
+            ...COMMON_HEADERS, // Adiciona o User-Agent e o Accept correto aqui
           },
         }
       );
@@ -168,16 +174,9 @@ async function startServer() {
       const results = mlResponse.data.results || [];
 
       const formattedProducts = results.map((item: any) => {
-        const mockDaysOnline =
-          Math.floor(Math.random() * 150) + 10;
-
-        const actualSales =
-          item.sold_quantity ||
-          Math.floor(Math.random() * 100);
-
-        const salesPerDay = parseFloat(
-          (actualSales / mockDaysOnline).toFixed(1)
-        );
+        const mockDaysOnline = Math.floor(Math.random() * 150) + 10;
+        const actualSales = item.sold_quantity || Math.floor(Math.random() * 100);
+        const salesPerDay = parseFloat((actualSales / mockDaysOnline).toFixed(1));
 
         return {
           id: `ml-${item.id}`,
@@ -185,29 +184,17 @@ async function startServer() {
           price: item.price,
           product_id: item.id,
           page_found: 1,
-          visits_last_7_days:
-            Math.floor(Math.random() * 2000) + 50,
+          visits_last_7_days: Math.floor(Math.random() * 2000) + 50,
           days_online: mockDaysOnline,
           sales_per_day: salesPerDay,
-          sales_per_week: parseFloat(
-            (salesPerDay * 7).toFixed(1)
-          ),
+          sales_per_week: parseFloat((salesPerDay * 7).toFixed(1)),
           total_sales: actualSales,
-          listing_type:
-            item.listing_type_id === "gold_pro"
-              ? "catalog"
-              : "organic",
-          logistics_type:
-            item.shipping?.logistic_type === "fulfillment"
-              ? "full"
-              : "standard",
-          seller_name:
-            item.seller?.nickname || "Desconhecido",
+          listing_type: item.listing_type_id === "gold_pro" ? "catalog" : "organic",
+          logistics_type: item.shipping?.logistic_type === "fulfillment" ? "full" : "standard",
+          seller_name: item.seller?.nickname || "Desconhecido",
           seller_reputation: "green",
           product_url: item.permalink,
-          image: item.thumbnail
-            ? item.thumbnail.replace("-I.jpg", "-O.jpg")
-            : "",
+          image: item.thumbnail ? item.thumbnail.replace("-I.jpg", "-O.jpg") : "",
         };
       });
 
@@ -215,7 +202,6 @@ async function startServer() {
         products: formattedProducts,
       });
     } catch (error: any) {
-
       console.error("[Search Error]");
       console.error("STATUS:", error?.response?.status);
       console.error("HEADERS:", error?.response?.headers);
