@@ -102,20 +102,16 @@ app.get("/api/search", async (req, res) => {
     // Get a fresh access token for the search
     const accessToken = await getAccessToken();
 
-    // Usando uma URL de API mais direta e headers mínimos para evitar o WAF
+    // Seguindo exatamente o padrão curl da documentação oficial
     const mlResponse = await axios.get(
       `https://api.mercadolibre.com/sites/MLB/search`,
       {
         params: {
           q: q,
-          limit: 20,
-          offset: 0
+          limit: 15,
         },
         headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Accept": "*/*",
-          "User-Agent": "PostmanRuntime/7.37.3", // Às vezes o Postman é mais aceito que o Chrome em servidores cloud
-          "Connection": "keep-alive"
+          "Authorization": `Bearer ${accessToken}`
         },
       }
     );
