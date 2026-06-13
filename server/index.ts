@@ -2,164 +2,170 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import axios from "axios";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Mercado Livre Credentials
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const ML_CLIENT_ID = process.env.ML_CLIENT_ID!;
 const ML_CLIENT_SECRET = process.env.ML_CLIENT_SECRET!;
 const ML_REFRESH_TOKEN = process.env.ML_REFRESH_TOKEN!;
-
-const COMMON_HEADERS = {
-  "Accept": "application/json",
-  "Accept-Encoding": "gzip, deflate, br",
-  "User-Agent": "MarketSpy/1.0 (Node.js; AxiosClient)"
-};
 
 const app = express();
 const server = createServer(app);
 
 app.use(express.json());
 
-// CORS Middleware
+// Frontend
+const distPath = path.resolve(__dirname, "..", "dist");
+app.use(express.static(distPath));
+
+// CORS
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
     "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
+
   next();
 });
 
-// Helper function to get Access Token
+// =========================
+// MERCADO LIVRE TOKEN
+// =========================
+
 async function getAccessToken() {
-  try {
-    console.log("[ML] Attempting to refresh token...");
-    const response = await axios.post(
-      "https://api.mercadolibre.com/oauth/token",
-      new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: ML_CLIENT_ID,
-        client_secret: ML_CLIENT_SECRET,
-        refresh_token: ML_REFRESH_TOKEN,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          ...COMMON_HEADERS,
-        },
-      }
-    );
-    console.log("[ML] Token refreshed successfully.");
-    return response.data.access_token;
-  } catch (error: any) {
-    console.error("[ML Token Error]", error?.response?.data || error.message);
-    throw new Error("Failed to get access token from Mercado Livre");
-  }
+  const response = await axios.post(
+    "https://api.mercadolibre.com/oauth/token",
+    new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: ML_CLIENT_ID,
+      client_secret: ML_CLIENT_SECRET,
+      refresh_token: ML_REFRESH_TOKEN,
+    }),
+    {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+    }
+  );
+
+  return response.data.access_token;
 }
 
-// Route: Test ML Connection
+// =========================
+// TESTE TOKEN
+// =========================
+
 app.get("/api/test-ml", async (_req, res) => {
   try {
-    const accessToken = await getAccessToken();
+    const token = await getAccessToken();
+
     const userResponse = await axios.get(
       "https://api.mercadolibre.com/users/me",
       {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          ...COMMON_HEADERS,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
 
     return res.json({
       success: true,
-      token_valid: true,
       user: userResponse.data,
     });
   } catch (error: any) {
+    console.error(error?.response?.data || error);
+
     return res.status(500).json({
       success: false,
-      error: error.message,
-      details: error?.response?.data
+      error: error?.response?.data || error.message,
     });
   }
 });
 
-// Route: Search Products (Now Authenticated to avoid 403)
+// =========================
+// BUSCA
+// =========================
+
 app.get("/api/search", async (req, res) => {
   try {
     const { q } = req.query;
 
     if (!q) {
-      return res.status(400).json({ error: "Keyword is required" });
+      return res.status(400).json({
+        error: "Query required",
+      });
     }
 
-    console.log(`[AUTHENTICATED SEARCH] ${q}`);
+    const token = await getAccessToken();
 
-    // Get a fresh access token for the search
-    const accessToken = await getAccessToken();
-
-    // Seguindo exatamente o padrão curl da documentação oficial
     const mlResponse = await axios.get(
-      `https://api.mercadolibre.com/sites/MLB/search`,
+      "https://api.mercadolibre.com/sites/MLB/search",
       {
         params: {
-          q: q,
-          limit: 15,
+          q,
+          limit: 30,
         },
         headers: {
-          "Authorization": `Bearer ${accessToken}`
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
         },
       }
     );
 
     const results = mlResponse.data.results || [];
 
-    const formattedProducts = results.map((item: any) => {
-      const mockDaysOnline = Math.floor(Math.random() * 150) + 10;
-      const actualSales = item.sold_quantity || Math.floor(Math.random() * 100);
-      const salesPerDay = parseFloat((actualSales / mockDaysOnline).toFixed(1));
+    const products = results.map((item: any) => ({
+      id: `ml-${item.id}`,
+      title: item.title,
+      price: item.price,
+      product_id: item.id,
+      total_sales: item.sold_quantity || 0,
+      seller_name: item.seller?.nickname || "Mercado Livre",
+      product_url: item.permalink,
+      image: item.thumbnail || "",
+    }));
 
-      return {
-        id: `ml-${item.id}`,
-        title: item.title,
-        price: item.price,
-        product_id: item.id,
-        page_found: 1,
-        visits_last_7_days: Math.floor(Math.random() * 2000) + 50,
-        days_online: mockDaysOnline,
-        sales_per_day: salesPerDay,
-        sales_per_week: parseFloat((salesPerDay * 7).toFixed(1)),
-        total_sales: actualSales,
-        listing_type: item.listing_type_id === "gold_pro" ? "catalog" : "organic",
-        logistics_type: item.shipping?.logistic_type === "fulfillment" ? "full" : "standard",
-        seller_name: item.seller?.nickname || "Desconhecido",
-        seller_reputation: "green",
-        product_url: item.permalink,
-        image: item.thumbnail ? item.thumbnail.replace("-I.jpg", "-O.jpg") : "",
-      };
+    return res.json({
+      products,
     });
-
-    return res.json({ products: formattedProducts });
   } catch (error: any) {
-    console.error("[Search Error]", error?.response?.data || error.message);
+    console.error(
+      "[ML SEARCH ERROR]",
+      error?.response?.status,
+      error?.response?.data
+    );
+
     return res.status(error?.response?.status || 500).json({
-      success: false,
-      error: "Failed to fetch from Mercado Livre",
+      error: "Mercado Livre Error",
       details: error?.response?.data || error.message,
     });
   }
 });
 
-// Production handling is managed by Vercel's edge/serverless infrastructure
+// SPA React
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
+
+// IMPORTANTE:
+// SEMPRE iniciar servidor
 const port = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== "production") {
-  server.listen(port, () => {
-    console.log(`🚀 Server running on port ${port}`);
-  });
-}
+
+server.listen(port, () => {
+  console.log(`🚀 MarketSpy rodando na porta ${port}`);
+});
 
 export default app;
